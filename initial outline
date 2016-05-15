@@ -1,0 +1,46 @@
+1. What is the problem you want to solve?
+The problem I want to solve is to figure out exactly what is driving revenue, so resources can be optimized to do just that.
+
+2. Who is your client and why do they care about this problem? In other words, what will your client DO or DECIDE based on your analysis that they wouldn’t have otherwise?
+My client is my sister's company that runs an affiliate website where she makes a commission on wine clubs purchased by customers that find them through her review website. She will be able to use the data/analysis to determine how to focus her efforts to drive revenue while avoiding activities that will have minimal effect on revenue growth.
+
+3. What data are you going to use for this? How will you acquire this data?
+
+My sister has provided the historical data, including:
+Internal Data:
+Club data: information like # of bottles, color of the wine, price info, shipping info, company the club is a product of, ratings/rankings for the algorithm, etc.
+Session data: in JSON (first page of session, any user settings [like State or # of bottles] but this data is more limited), source information (where the user came from), platform/device category (phone, tablet, desktop)
+Click data: the club that was clicked out to, when it was clicked, and whether that was the first time that user clicked out on that club
+Sales data: stored by click for ~65% of sales -- the other sales don't get recorded in the database, when the user converted, what they spent, what I was paid for the sale
+Click, sales, and session data are merged into one table for easier munging
+
+External Data (NO SALES DATA HERE):
+Detailed source information (where the user came from)
+What platform the user is on
+  Geo-location information
+  On-site behavior
+  Which pages the user looked at
+  How many pages
+  Bounce rate (only looked at the landing page and then left)
+  Which clubs the user looked at, clicked out on
+  Landing page information (and by source)
+  When and what changes were made to the site (not exportable)
+
+I plan on focusing only on the internal data, not external data.
+
+4. In brief, outline your approach to solving this problem (knowing that this might change later).
+I plan to perform exploratory data analysis to make the following comparisons and generate observations:
+
+1. Comparing what site people are referred from (google, forbes, etc.) and how much they spend (total and price/bottle)
+2. Which wine clubs are the best performers.
+3. Which ad model leads to highest revenue, and what, if any, impact being featured has on revenue.
+4. Effect of shipping costs on sales/revenue.
+5. Revenue by category, revenue by club, revenue by average price/bottle.
+6. In addition, all of these comparisons can be made during holiday and non-holiday periods.
+
+Then, I'd like to utilize machine learning tools to analyze all the variables for their individual impact and impact in combination with each other to help determine which areas she should focus on to increase revenue.
+
+5. What are your deliverables? Typically, this would include code, along with a paper and/or a slide deck.
+Deliverables will include plots from EDA that provide visualizations of the various comparisons outlined above, as well as a report of the model used and the error rates for the modeling set and the test set. I can include code used to generate the plots as well as a presentation with all the results and recommendations.
+
+
