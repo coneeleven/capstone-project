@@ -163,7 +163,7 @@ head(wine_clubgroupid.sales)
 wine_converted_dates <- wine_clubgroupid.sales %>% 
   mutate(cdate = as.Date(converted_at, "%m/%d/%Y")) %>% 
   select(clubgroup_id.x, club_id, category, sale_amt, total, revenue, converted_at, cdate, session_id, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords) %>% 
-  separate(cdate, c("year", "month")) %>% 
+  separate(cdate, c("year", "month", "day")) %>% 
   unite(YM, year:month, sep="-", remove=FALSE) %>% 
   arrange(YM) %>% 
   group_by(YM)
@@ -171,12 +171,21 @@ wine_converted_dates <- wine_clubgroupid.sales %>%
 head(wine_converted_dates, n=20)
 ```
 
+```{r}
+x <- wine_converted_dates$YM
+z <- as.Date(x, "%Y-%m")
+wine_converted_dates
+z
+```
+
 ##### The following items are not resolved, and I would like to, but I'm stuck #####
 
 # sales trends over time - i.e. by year, by month/year, and by holiday/non-holiday periods
 # I figured out how get it to display year/month, by creating a new column, then arrange by that column (YM). Here is a bar chart, faceted by clubgroup_id. I'm on the right track.
 ```{r}
-ggplot(wine_converted_dates, aes(YM, revenue)) + geom_bar(stat = "identity") + facet_wrap(~clubgroup_id.x, scales = "free_y")
+# ggplot(wine_converted_dates, aes(YM, revenue)) + geom_bar(stat = "identity") + facet_wrap(~clubgroup_id.x, scales = "free_y")
+
+ggplot(subset(wine_converted_dates, clubgroup_id.x = 27), aes(YM, revenue)) + geom_bar(stat = "identity") 
 ```
 
 # What I'd like are 2 line charts, where:
