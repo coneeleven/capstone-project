@@ -6,91 +6,108 @@ output: word_document
 ---
 
 ```{r}
-library("dplyr")
-library("tidyr")
-library("ggplot2")
+setwd("C:/Users/conee/Dropbox/Data Science/WineClubReviews")
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(chron)
 ```
 
 
 # Read in data sets, merge data sets by club_id, and glimpse (dplyr) and view all data sets
 
 ```{r}
-wineclubs <- read.csv("listings_export_051316.csv")
-#glimpse(wineclubs)
-#View(wineclubs)
-wineclicks <- read.csv("tracked_clicks_full.csv")
-#glimpse(wineclicks)
-#View(wineclicks)
-
-wine <- merge(wineclicks, wineclubs, by="club_id")
-#glimpse(wine)
-#View(wine)
-
+wineclubs <- read.csv("listings_export_051316.csv", stringsAsFactors = F)
+glimpse(wineclubs)
+View(wineclubs)
+```
+```{r}
+wineclicks <- read.csv("tracked_clicks_full.csv", stringsAsFactors = F)
+glimpse(wineclicks)
+View(wineclicks)
+```
+```{r}
+wine <- inner_join(wineclicks, wineclubs, by="club_id")
+glimpse(wine)
+View(wine)
 ```
 
-# select variables for new data frame
+# Assign a category name for each selcolor choice (from a lookup table provided separately)
+# Future task: Try to merge the lookup table and convert this automatically
 ```{r}
-wine_ <- wine %>% 
-  select(clubgroup_id.x, club_id, name, category, sale_amt, total, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords) %>% 
+wine$selcolor.name[wine$selcolor=="0"] <- "no choice"
+wine$selcolor.name[wine$selcolor=="1"] <- "Red and White Mix only"
+wine$selcolor.name[wine$selcolor=="2"] <- "Red-only option"
+wine$selcolor.name[wine$selcolor=="3"] <- "White-only option"
+wine$selcolor.name[wine$selcolor=="4"] <- "Red-only and White-only options"
+wine$selcolor.name[wine$selcolor=="5"] <- "Red Wine"
+wine$selcolor.name[wine$selcolor=="6"] <- "White Wine"
+wine$selcolor.name[wine$selcolor=="7"] <- "Sparkling and Champagne"
+wine$selcolor.name[wine$selcolor=="8"] <- "Mostly Reds"
+wine$selcolor.name[wine$selcolor=="9"] <- "Mostly Reds option"
+wine$selcolor.name[wine$selcolor=="10"] <- "Red and Sparkling"
+wine$selcolor.name[wine$selcolor=="13"] <- "Rose"
+wine$selcolor.name[wine$selcolor=="15"] <- "unknown"
+wine$selcolor.name[wine$selcolor=="16"] <- "unknown"
+```
 
+# Select variables for new data frame
+# Group data by club group and filter out clicks without sales (sales == total > 0)
+# Goal: to pare down 143 variables to 19 variables to be used for balance of EDA
+
+```{r}
+wine.sub2 <- wine %>% 
+  mutate(cdate = as.Date(converted_at, "%m/%d/%Y")) %>% 
+  select(clubgroup_id.x, club_id, sale_amt, cdate, total, price, price_per_bottle, bottles, shipfreq, selcolor, shipprice, shipdesc, all_around, rating, selcolor.name, company_name, converted_at, keywords, session_id) %>% 
   group_by(clubgroup_id.x) %>% 
-  mutate(revenue = sum(total)) %>% 
-  
-  select(clubgroup_id.x, club_id, name, category, sale_amt, total, revenue, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords)
+  filter(total>0) %>% 
+  arrange(cdate)
 
-head(wine_)
+head(wine.sub2, n=20)
 ```
 
-
 ```{r}
-View(wine_)
+summary(wine.sub2)
 ```
 
-### Total revenue in dataset
-
-
+# Identify top 20 clubgroups by revenue (descending)
+# This includes 90% of revenue
 ```{r}
-summary(wine_$revenue)
-summary(wine_$club_id)
-```
-
-# top 20 clubgroup_ids in revenue (descending) by clubgroup_id
-```{r}
-wine_top <- wine_ %>% 
+wine_top20 <- wine.sub2 %>% 
   group_by(clubgroup_id.x) %>% 
   summarise(revenue=sum(total)) %>% 
   arrange(desc(revenue)) %>% 
   slice(1:20)
 
-wine_top
+wine_top20
 ```
 
-# bar chart of number of sales by clubgroup_id
+# Bar chart of revenue by clubgroup_id
 ```{r}
-ggplot(wine_top, aes(clubgroup_id.x, revenue)) + geom_bar(stat = "identity")
+ggplot(wine_top20, aes(as.factor(clubgroup_id.x), revenue)) + geom_bar(stat = "identity")
 
 ```
 
-# revenue by selcolor 
+# Revenue by selcolor 
 ```{r}
-wine_totalbyselcolor <- wine_ %>% 
-  group_by(selcolor) %>%
+wine_totalbyselcolor.name <- wine.sub2 %>% 
+  group_by(selcolor.name) %>% 
   summarize(revenue=sum(total)) %>% 
-  arrange(desc(revenue))
+  arrange(desc(revenue)) %>% 
+  slice(1:20)
 
-wine_totalbyselcolor
+wine_totalbyselcolor.name
 ```
 
-# bar chart of revenue by selcolor
+# Bar chart of revenue by selcolor
 ```{r}
-ggplot(wine_totalbyselcolor, aes(selcolor, revenue)) + geom_bar(stat = "identity") + 
-  scale_x_continuous(breaks=c(0:15)) +
-  scale_y_log10(breaks=c(1,10,100,1000,10000,100000,1000000))
+ggplot(wine_totalbyselcolor.name, aes(selcolor, revenue)) + geom_bar(stat = "identity") + 
+  scale_x_discrete(breaks=c(0:15))
 ```
 
-# revenue by bottles 
+# Revenue by bottles 
 ```{r}
-wine_totalbybottles <- wine_ %>% 
+wine_totalbybottles <- wine.sub2 %>% 
   group_by(bottles) %>%
   summarize(revenue=sum(total)) %>% 
   arrange(desc(revenue))
@@ -98,106 +115,121 @@ wine_totalbybottles <- wine_ %>%
 wine_totalbybottles
 ```
 
-# bar chart of revenue by bottles
+# Bar chart of revenue by bottles
 ```{r}
 ggplot(wine_totalbybottles, aes(bottles, revenue)) + geom_bar(stat = "identity") + 
-  scale_x_continuous(breaks=c(0:15))
+  scale_x_continuous(breaks=c(1:12))
 ```
 
-# scatterplot of revenue by average bottle price
+# Revenue by average bottle price 
 ```{r}
-ggplot(wine_, aes(price_per_bottle, revenue)) + geom_point() + 
-  geom_smooth(method = "lm") +
+wine_avgbottleprice <- wine.sub2 %>% 
+  group_by(price_per_bottle) %>%
+  summarize(revenue=sum(total)) %>% 
+  arrange(desc(revenue))
+
+wine_avgbottleprice
+```
+
+# Scatterplot of revenue by average bottle price
+```{r}
+ggplot(wine_avgbottleprice, aes(price_per_bottle, revenue)) + geom_point(alpha = 1) + 
+  geom_smooth() +
   scale_x_continuous(breaks=seq(10,70,5)) + 
   scale_y_log10() +
   coord_cartesian(xlim = c(10,70))
 ```
 
+
+# Plot of revenue by date
 ```{r}
-ggplot(wine_, aes(price_per_bottle, revenue)) + geom_boxplot(aes(color="blue"))
+ggplot(wine.sub3, aes(x = cdate, y = revenue, group = clubgroup_id.x, color = clubgroup_id.x)) + geom_line() + scale_x_date()
 ```
 
-# ***do not use for now*** total by club_id, grouped by clubgroup_name -- **do not use for now** 
 
+# Plot of cumulative total for club 27 by date
 ```{r}
-ggplot(wine_, aes(x = club_id, y = total)) + geom_point(alpha=.05) + facet_wrap(~clubgroup_name) +
-  scale_y_log10()
-```
-Looks like the people linked from ggl and GoogleOrganic spend the most, then maybe Google UNK, BingOrganic, and then the Forbes article (not counting the blank/unknown sources)
+wine.sub3.27 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="27") %>% 
+  na.omit()
 
-# ***do not use for now*** price/bottle by club_id, grouped by clubgroup_name
-```{r}
-ggplot(wine_, aes(x = club_id, y = price_per_bottle)) + geom_point(alpha=.05) + facet_wrap(~clubgroup_name) + scale_y_log10()
-```
+p1 <- ggplot(wine.sub3.27, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 27", x = "conversion date", y = "running total")
 
-# clicks by clubgroup_id
-```{r}
-wine_clubgroupid <- wine %>% 
-  select(clubgroup_id.x, club_id, category, sale_amt, total, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords) %>% 
-
-  group_by(clubgroup_id.x) %>% 
-  mutate(revenue = sum(total)) %>% 
-  
-  select(clubgroup_id.x, club_id, category, sale_amt, total, revenue, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords)
-
-head(wine_clubgroupid)
+p1
 ```
 
-# sales by clubgroup_id - ***this df will be used to manipulate dates for time studies (next 2 chunks)***
+# Plot of cumulative total for club 49 by date
 ```{r}
-wine_clubgroupid.sales <- wine_ %>% 
-  select(clubgroup_id.x, club_id, category, sale_amt, total, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords) %>% 
+wine.sub3.49 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="49") %>% 
+  na.omit()
 
-  group_by(clubgroup_id.x) %>% 
-  mutate(revenue = sum(total)) %>% 
-  filter(total>0) %>% 
-  summarise(revenue) %>% 
-  
-  select(clubgroup_id.x, club_id, category, sale_amt, total, revenue, converted_at, session_id, user_query, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords)
+p2 <- ggplot(wine.sub3.49, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 49", x = "conversion date", y = "running total")
 
-head(wine_clubgroupid.sales)
+p2
 ```
 
-# first duplicate "converted_at" to cdate column, then convert to a date (this also drops the time stamp) and then separate out year/month
+# Plot of cumulative total for club 171 by date
 ```{r}
-wine_converted_dates <- wine_clubgroupid.sales %>% 
-  mutate(cdate = as.Date(converted_at, "%m/%d/%Y")) %>% 
-  select(clubgroup_id.x, club_id, category, sale_amt, total, revenue, converted_at, cdate, session_id, price, price_per_bottle, bottles, selcolor, billfreq, shipfreq, shipdesc, shipprice, duration, all_around, featured.x, clubgroup_name, list_name, company_name, keywords) %>% 
-  separate(cdate, c("year", "month")) %>% 
-  unite(YM, year:month, sep="-", remove=FALSE) %>% 
-  arrange(YM) %>% 
-  group_by(YM)
+wine.sub3.171 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="171") %>% 
+  na.omit()
 
-head(wine_converted_dates, n=20)
+p3 <- ggplot(wine.sub3.171, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 171", x = "conversion date", y = "running total")
+
+p3
 ```
 
-##### The following items are not resolved, and I would like to, but I'm stuck #####
-
-# sales trends over time - i.e. by year, by month/year, and by holiday/non-holiday periods
-# I figured out how get it to display year/month, by creating a new column, then arrange by that column (YM). Here is a bar chart, faceted by clubgroup_id. I'm on the right track.
+# Plot of cumulative total for club 51 by date
 ```{r}
-ggplot(wine_converted_dates, aes(YM, revenue)) + geom_bar(stat = "identity") + facet_wrap(~clubgroup_id.x, scales = "free_y")
+wine.sub3.51 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="51") %>% 
+  na.omit()
+
+p4 <- ggplot(wine.sub3.51, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 51", x = "conversion date", y = "running total")
+
+p4
 ```
 
-# What I'd like are 2 line charts, where:
-
-# 1. line chart - each clubgroup would be its own line, x would be month/year, and y would be *monthly* revenue, faceted by clubgroup
+# Plot of cumulative total for club 70 by date
 ```{r}
+wine.sub3.70 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="70") %>% 
+  na.omit()
 
+p5 <- ggplot(wine.sub3.70, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 70", x = "conversion date", y = "running total")
+
+p5
 ```
 
-# 2. line chart - each clubgroup would be its own line, x would be month/year, and y would be *cumulative* revenue, faceted by clubgroup
+# Plot of cumulative total for club 112 by date
 ```{r}
+wine.sub3.112 <- wine.sub3 %>% 
+  filter(clubgroup_id.x=="112") %>% 
+  na.omit()
 
+p6 <- ggplot(wine.sub3.112, aes(x = cdate, y = cumsum(total)), group = year, color = year) + geom_line() + scale_x_date() + labs(title = "Club 112", x = "conversion date", y = "running total")
+
+p6
 ```
 
-# Then I'd like to figure out the following:
-# 1. sales grouped by shipping cost - i.e. 3 buckets (free, under $x, over $x) - need to figure out what x is
+# Arrange plots on a grid (2 columns)
+```{r}
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol=2)
+```
 
-# 2. quantity of sales at various price range buckets
 
-# 3. For given session id's, including only ones containing a sale, which other clubs do customers look at before purchasing their chosen club?
+##### OTHER EDA #####
 
-# Lastly, it would be useful to figure out how to look at a single chart from a facet (i.e. facet wrap)
+# Create data frame of holiday period
+# Future task: Evaluate sales within and outside of designated holiday periods
 
-# After all of this, then I want to get into some of the predictive stuff.
+```{r}
+wine.holiday <- data.table(start = c(as.Date(USThanksgivingDay(2010:2020))), 
+                           end = as.Date(USNewYearsDay(2011:2021))-1)
+wine.holiday
+```
+
+```{r}
+wine.nonholiday #will be everything not in wine.holiday - still need to figure out how to do this.
+```
